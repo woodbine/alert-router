@@ -44,17 +44,17 @@ search:
   # Use this to narrow results to a specific domain
   # Leave blank or remove to fetch all matching records
   search_term: >
-    "cyber security" OR "penetration testing" OR "SIEM" OR "SOC"
-    OR "endpoint protection" OR "information security" OR "security operations"
-    OR "threat intelligence" OR "vulnerability assessment" OR "network security"
-    OR "security architecture" OR "red team" OR "blue team" OR "incident response"
-    OR "security clearance" OR "security audit" OR "security monitoring"
-    OR "intrusion detection" OR "malware" OR "ransomware" OR "DDoS"
-    OR "access control" OR "identity management" OR "zero trust"
-    OR "security operations centre" OR "managed security"
+    "cyber security" OR "cybersecurity" OR "penetration testing" OR "pen test"
+    OR "siem" OR "soc" OR "endpoint" OR "anti-virus" OR "antivirus" OR "firewall"
+    OR "information security" OR "data security" OR "network security"
+    OR "security operations" OR "threat intelligence" OR "vulnerability"
+    OR "intrusion detection" OR "managed security" OR "zero trust"
+    OR "identity management" OR "security architecture" OR "red team"
+    OR "incident response" OR "security clearance" OR "security audit"
+    OR "security monitoring" OR "ransomware" OR "malware" OR "DDoS"
+    OR "access control" OR "cyber essentials"
 
-  # Exclude records containing this term
-  # Useful for removing false positives
+  # Exclude records containing this term (useful for removing false positives)
   # exclude_term: "cleaning"
 
   # How many days back to query (1 = today only, 2 = today + yesterday)
@@ -62,6 +62,10 @@ search:
 
   # Records per API page (max 100)
   limit: 100
+
+  # Max total records to fetch (optional - caps total across all pages)
+  # Useful for testing. Remove or set to 0 for no cap.
+  # max_records: 20
 
 # --- Destinations ---
 # Where matched opportunities get posted
