@@ -1,4 +1,4 @@
 requests
-anthropic
+google-genai
 pyyaml
 click

@@ -11,10 +11,11 @@ spend_network:
 
 # --- LLM provider ---
 # Used for classifying records against your routing rules
+# Uses Google Gemini by default (fast and cost-effective for classification)
 llm:
-  provider: anthropic                # anthropic or openai
-  api_key: sk-ant-...               # your LLM API key
-  model: claude-sonnet-4-20250514   # model to use for classification
+  provider: gemini                   # gemini (default)
+  api_key: AIza...                  # your Gemini API key (from aistudio.google.com)
+  model: gemini-2.0-flash           # model to use for classification
 
 # --- Search filters ---
 # Controls which procurement records are fetched

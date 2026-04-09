@@ -2,10 +2,10 @@
 LLM-based record classification.
 
 Classifies procurement records against user-defined routing rules
-using an LLM (Anthropic Claude by default).
+using Google Gemini.
 """
 
-import anthropic
+from google import genai
 
 
 def _format_cpv_aug_data(record: dict) -> str:
@@ -156,7 +156,7 @@ def _parse_response(text: str) -> dict:
 
 def classify_record(record: dict, routing_rules: list, llm_config: dict) -> dict:
     """
-    Classify a single record against routing rules using an LLM.
+    Classify a single record against routing rules using Google Gemini.
 
     Args:
         record: A procurement record dict from the API.
@@ -177,14 +177,13 @@ def classify_record(record: dict, routing_rules: list, llm_config: dict) -> dict
     try:
         prompt = _build_prompt(record, routing_rules)
 
-        client = anthropic.Anthropic(api_key=llm_config["api_key"])
-        response = client.messages.create(
-            model=llm_config.get("model", "claude-sonnet-4-20250514"),
-            max_tokens=500,
-            messages=[{"role": "user", "content": prompt}],
+        client = genai.Client(api_key=llm_config["api_key"])
+        response = client.models.generate_content(
+            model=llm_config.get("model", "gemini-2.0-flash"),
+            contents=prompt,
         )
 
-        response_text = response.content[0].text
+        response_text = response.text
         return _parse_response(response_text)
 
     except Exception as e:

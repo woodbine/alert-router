@@ -5,7 +5,7 @@ Fetch today's government procurement opportunities, classify them with an LLM ag
 ## What you need
 
 - **Open Opportunities API credentials** - [Expert tier](https://openopps.com/expert)
-- **Anthropic API key** - [Get one at console.anthropic.com](https://console.anthropic.com)
+- **Google Gemini API key** - [Get one at aistudio.google.com](https://aistudio.google.com/apikey)
 - **A Microsoft Teams or Slack webhook URL** (see setup instructions below)
 
 ## Install
@@ -25,7 +25,7 @@ cp config.yaml.example config.yaml
 Open `config.yaml` and fill in:
 
 1. Your Spend Network API credentials (email + password)
-2. Your Anthropic API key
+2. Your Gemini API key
 3. Your webhook URLs
 4. Your routing rules (plain English descriptions of what each channel should receive)
 
@@ -159,7 +159,7 @@ The quality of your routing rules determines the quality of your matches. Here a
 
 ```
 ┌──────────────────┐     ┌──────────────┐     ┌──────────────┐
-│ Spend Network    │────>│   Claude      │────>│ Teams/Slack  │
+│ Spend Network    │────>│   Gemini      │────>│ Teams/Slack  │
 │ Procurement API  │     │   (classify)  │     │  (webhooks)  │
 └──────────────────┘     └──────────────┘     └──────────────┘
   Fetch daily records     Match against         Post formatted
@@ -168,7 +168,7 @@ The quality of your routing rules determines the quality of your matches. Here a
 
 1. **Fetch** - Queries the Spend Network API for today's opportunities matching your country, value, and document type filters
 2. **Deduplicate** - Skips records that were already posted in previous runs
-3. **Classify** - Sends each record to Claude with your routing rules; the LLM identifies which rules match and writes a plain-English summary
+3. **Classify** - Sends each record to Gemini with your routing rules; the LLM identifies which rules match and writes a plain-English summary
 4. **Route** - Posts formatted cards to the matched Teams or Slack channels
 
 ## Don't want to run this yourself?
