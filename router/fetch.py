@@ -7,9 +7,6 @@ Handles pagination and query construction based on config parameters.
 from datetime import datetime, timedelta, timezone
 import requests
 
-API_BASE = "https://api.spendnetwork.cloud"
-SEARCH_ENDPOINT = f"{API_BASE}/api/v3/notices_summary/read_summary_records"
-
 # API limits
 MAX_RECORDS_PER_PAGE = 100
 MAX_OFFSET = 9900
@@ -32,6 +29,8 @@ def fetch_records(token: str, config: dict) -> list[dict]:
         Flat list of all record dicts across all pages.
     """
     search = config.get("search", {})
+    api_url = config.get("spend_network", {}).get("api_url", "https://api.spendnetwork.cloud")
+    search_endpoint = f"{api_url}/api/v3/notices_summary/read_summary_records"
     lookback_days = search.get("lookback_days", 2)
     limit = min(search.get("limit", 100), MAX_RECORDS_PER_PAGE)
     countries = search.get("countries", ["GB"])
@@ -72,7 +71,7 @@ def fetch_records(token: str, config: dict) -> list[dict]:
 
         try:
             response = requests.post(
-                SEARCH_ENDPOINT,
+                search_endpoint,
                 json=body,
                 headers=headers,
                 timeout=60,

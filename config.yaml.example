@@ -6,6 +6,7 @@
 # --- Spend Network API credentials ---
 # Sign up at https://openopps.com/pricing (Expert tier)
 spend_network:
+  api_url: https://api.spendnetwork.cloud  # Spend Network API base URL
   username: your_email@example.com   # Spend Network login email
   password: your_password            # Spend Network password
 

@@ -90,7 +90,7 @@ def load_config(config_path: str) -> dict:
 @click.option("--dry-run", is_flag=True, help="Classify but do not post to webhooks")
 @click.option("--limit", type=int, default=None, help="Override config limit for testing")
 @click.option("--lookback", type=int, default=None, help="Override config lookback_days")
-def main(config_path: str, dry_run: bool, limit: int | None, lookback: int | None):
+def main(config_path: str, dry_run: bool, limit, lookback: int | None):
     """Open Opportunities Alert Router - fetch, classify, and route procurement opportunities."""
 
     start_time = time.time()
@@ -109,9 +109,11 @@ def main(config_path: str, dry_run: bool, limit: int | None, lookback: int | Non
 
     # 2. Authenticate
     print("[AUTH] Authenticating with Spend Network API...")
+    api_url = config["spend_network"].get("api_url", "https://api.spendnetwork.cloud")
     token = get_token(
         config["spend_network"]["username"],
         config["spend_network"]["password"],
+        api_url=api_url,
     )
     print("[AUTH] Authenticated successfully\n")
 

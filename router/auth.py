@@ -8,17 +8,15 @@ for use in subsequent API calls.
 import sys
 import requests
 
-API_BASE = "https://api.spendnetwork.cloud"
-LOGIN_ENDPOINT = f"{API_BASE}/api/v3/login/access-token"
 
-
-def get_token(username: str, password: str) -> str:
+def get_token(username: str, password: str, api_url: str = "https://api.spendnetwork.cloud") -> str:
     """
     Authenticate with Spend Network API.
 
     Args:
         username: Spend Network login email
         password: Spend Network password
+        api_url: Base URL for the Spend Network API
 
     Returns:
         Bearer token string.
@@ -26,9 +24,11 @@ def get_token(username: str, password: str) -> str:
     Raises:
         SystemExit with clear message on failure.
     """
+    login_endpoint = f"{api_url}/api/v3/login/access-token"
+
     try:
         response = requests.post(
-            LOGIN_ENDPOINT,
+            login_endpoint,
             json={"username": username, "password": password},
             headers={"Content-Type": "application/json"},
             timeout=30,
