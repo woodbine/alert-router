@@ -9,6 +9,28 @@ from datetime import datetime
 import requests
 
 
+def _relevance_color(score: int) -> str:
+    """Return Adaptive Card color keyword based on relevance score."""
+    if score >= 8:
+        return "Good"       # green
+    elif score >= 5:
+        return "Warning"    # amber
+    elif score >= 1:
+        return "Attention"  # red
+    return "Default"
+
+
+def _relevance_emoji(score: int) -> str:
+    """Return an emoji indicator for Slack based on relevance score."""
+    if score >= 8:
+        return "\u2705"     # green tick
+    elif score >= 5:
+        return "\u26a0\ufe0f"  # warning
+    elif score >= 1:
+        return "\ud83d\udfe0"  # orange circle
+    return "\u2b1b"         # black square
+
+
 def _format_value(value: int) -> str:
     """Format a GBP value for display. Returns 'Not published' if 0."""
     if not value or value == 0:
@@ -25,6 +47,22 @@ def _format_date(date_str) -> str:
         return dt.strftime("%d %b %Y")
     except (ValueError, AttributeError):
         return date_str
+
+
+def _build_openopps_url(record: dict) -> str:
+    """Build a direct link to the record on Open Opportunities."""
+    ocid = record.get("ocid", "")
+    tags = record.get("release_tags", "tender").lower()
+    # Normalise tag to the base type
+    if "award" in tags:
+        tag = "award"
+    elif "planning" in tags:
+        tag = "planning"
+    else:
+        tag = "tender"
+    if ocid:
+        return f"https://app.openopps.com/search/details?tag={tag}&ocid={ocid}"
+    return "https://app.openopps.com/search"
 
 
 def _get_date_fields(record: dict) -> tuple[str, str]:
@@ -52,7 +90,7 @@ def _get_date_fields(record: dict) -> tuple[str, str]:
 
 
 def post_to_teams(webhook_url: str, record: dict, matched_rule_name: str,
-                  summary: str, reason: str) -> bool:
+                  summary: str, reason: str, relevance: int = 0) -> bool:
     """
     Post Adaptive Card to Teams webhook.
 
@@ -70,67 +108,152 @@ def post_to_teams(webhook_url: str, record: dict, matched_rule_name: str,
     date_label, date_value = _get_date_fields(record)
     release_date = _format_date(record.get("release_date"))
 
-    card = {
-        "type": "message",
-        "attachments": [
+    adaptive_card = {
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "type": "AdaptiveCard",
+        "version": "1.4",
+        "body": [
             {
-                "contentType": "application/vnd.microsoft.card.adaptive",
-                "content": {
-                    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-                    "type": "AdaptiveCard",
-                    "version": "1.4",
-                    "body": [
-                        {
-                            "type": "TextBlock",
-                            "text": "New Opportunity",
-                            "weight": "Bolder",
-                            "size": "Medium",
-                            "color": "Accent",
-                        },
-                        {
-                            "type": "TextBlock",
-                            "text": record.get("tender_title", "Untitled"),
-                            "weight": "Bolder",
-                            "size": "Large",
-                            "wrap": True,
-                        },
-                        {
-                            "type": "FactSet",
-                            "facts": [
-                                {"title": "Buyer", "value": record.get("buyer_name", "N/A")},
-                                {"title": "Region", "value": f"{record.get('buyer_address_region', 'N/A')}, {record.get('buyer_address_country_name', 'N/A')}"},
-                                {"title": "Document type", "value": record.get("release_tags", "N/A")},
-                                {"title": "Status", "value": record.get("tag_status", "N/A")},
-                                {"title": "Estimated value (GBP)", "value": value_display},
-                                {"title": date_label, "value": date_value},
-                                {"title": "Published", "value": release_date},
-                                {"title": "Matched rule", "value": matched_rule_name},
-                                {"title": "Why matched", "value": reason},
-                            ],
-                        },
-                        {
-                            "type": "TextBlock",
-                            "text": "Summary",
-                            "weight": "Bolder",
-                            "separator": True,
-                        },
-                        {
-                            "type": "TextBlock",
-                            "text": summary,
-                            "wrap": True,
-                        },
-                    ],
-                    "actions": [
-                        {
-                            "type": "Action.OpenUrl",
-                            "title": "View full notice",
-                            "url": record.get("tender_url", ""),
-                        }
-                    ],
-                },
-            }
+                "type": "ColumnSet",
+                "columns": [
+                    {
+                        "type": "Column",
+                        "width": "auto",
+                        "items": [
+                            {
+                                "type": "Image",
+                                "url": "https://openopps-marketing-static.s3.eu-west-2.amazonaws.com/68a13074-90c8-4269-84bc-78cac7a04fcb.png",
+                                "size": "Small",
+                                "height": "24px",
+                            }
+                        ],
+                        "verticalContentAlignment": "Center",
+                    },
+                    {
+                        "type": "Column",
+                        "width": "stretch",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "text": "Open Opportunities Alert",
+                                "weight": "Bolder",
+                                "size": "Medium",
+                                "color": "Accent",
+                            }
+                        ],
+                        "verticalContentAlignment": "Center",
+                    },
+                ],
+            },
+            {
+                "type": "TextBlock",
+                "text": record.get("tender_title", "Untitled"),
+                "weight": "Bolder",
+                "size": "Large",
+                "wrap": True,
+            },
+            {
+                "type": "FactSet",
+                "facts": [
+                    {"title": "Buyer", "value": record.get("buyer_name", "N/A")},
+                    {"title": "Region", "value": f"{record.get('buyer_address_region', 'N/A')}, {record.get('buyer_address_country_name', 'N/A')}"},
+                    {"title": "Document type", "value": record.get("release_tags", "N/A")},
+                    {"title": "Status", "value": record.get("tag_status", "N/A")},
+                    {"title": "Estimated value (GBP)", "value": value_display},
+                    {"title": date_label, "value": date_value},
+                    {"title": "Published", "value": release_date},
+                    {"title": "Matched rule", "value": matched_rule_name},
+                    {"title": "Why matched", "value": reason},
+                ],
+            },
+            {
+                "type": "ColumnSet",
+                "separator": True,
+                "columns": [
+                    {
+                        "type": "Column",
+                        "width": "auto",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "text": f"Relevance: {relevance}/10",
+                                "weight": "Bolder",
+                                "size": "Medium",
+                                "color": _relevance_color(relevance),
+                            }
+                        ],
+                    },
+                    {
+                        "type": "Column",
+                        "width": "stretch",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "text": "\u2588" * relevance + "\u2591" * (10 - relevance),
+                                "size": "Medium",
+                                "color": _relevance_color(relevance),
+                            }
+                        ],
+                        "verticalContentAlignment": "Center",
+                    },
+                ],
+            },
+            {
+                "type": "TextBlock",
+                "text": "Summary",
+                "weight": "Bolder",
+            },
+            {
+                "type": "TextBlock",
+                "text": summary,
+                "wrap": True,
+            },
+            {
+                "type": "TextBlock",
+                "text": "Powered by [Open Opportunities](https://openopps.com) · Data from 800+ sources across 180+ countries",
+                "size": "Small",
+                "isSubtle": True,
+                "wrap": True,
+                "separator": True,
+            },
+        ],
+        "actions": [
+            {
+                "type": "Action.OpenUrl",
+                "title": "View original notice",
+                "url": record.get("tender_url", ""),
+            },
+            {
+                "type": "Action.OpenUrl",
+                "title": "View on Open Opportunities",
+                "url": _build_openopps_url(record),
+            },
         ],
     }
+
+    # Power Automate Workflows webhooks use a different format
+    # than the older Office 365 Connectors
+    is_workflows = "powerautomate" in webhook_url or "logic.azure" in webhook_url
+    if is_workflows:
+        card = {
+            "type": "AdaptiveCard",
+            "attachments": [
+                {
+                    "contentType": "application/vnd.microsoft.card.adaptive",
+                    "content": adaptive_card,
+                }
+            ],
+        }
+    else:
+        card = {
+            "type": "message",
+            "attachments": [
+                {
+                    "contentType": "application/vnd.microsoft.card.adaptive",
+                    "content": adaptive_card,
+                }
+            ],
+        }
 
     try:
         response = requests.post(webhook_url, json=card, timeout=30)
@@ -144,7 +267,7 @@ def post_to_teams(webhook_url: str, record: dict, matched_rule_name: str,
 
 
 def post_to_slack(webhook_url: str, record: dict, matched_rule_name: str,
-                  summary: str, reason: str) -> bool:
+                  summary: str, reason: str, relevance: int = 0) -> bool:
     """
     Post Block Kit message to Slack webhook.
 
@@ -164,15 +287,22 @@ def post_to_slack(webhook_url: str, record: dict, matched_rule_name: str,
     message = {
         "blocks": [
             {
-                "type": "header",
-                "text": {"type": "plain_text", "text": "New Opportunity"},
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "image",
+                        "image_url": "https://openopps-marketing-static.s3.eu-west-2.amazonaws.com/68a13074-90c8-4269-84bc-78cac7a04fcb.png",
+                        "alt_text": "Open Opportunities",
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": "*Open Opportunities Alert*",
+                    },
+                ],
             },
             {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"*{record.get('tender_title', 'Untitled')}*",
-                },
+                "type": "header",
+                "text": {"type": "plain_text", "text": record.get("tender_title", "Untitled")},
             },
             {
                 "type": "section",
@@ -183,6 +313,7 @@ def post_to_slack(webhook_url: str, record: dict, matched_rule_name: str,
                     {"type": "mrkdwn", "text": f"*Value*\n{value_display}"},
                     {"type": "mrkdwn", "text": f"*{date_label}*\n{date_value}"},
                     {"type": "mrkdwn", "text": f"*Matched rule*\n{matched_rule_name}"},
+                    {"type": "mrkdwn", "text": f"*Relevance*\n{_relevance_emoji(relevance)} {relevance}/10"},
                 ],
             },
             {
@@ -197,9 +328,23 @@ def post_to_slack(webhook_url: str, record: dict, matched_rule_name: str,
                 "elements": [
                     {
                         "type": "button",
-                        "text": {"type": "plain_text", "text": "View full notice"},
+                        "text": {"type": "plain_text", "text": "View original notice"},
                         "url": record.get("tender_url", ""),
-                    }
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "View on Open Opportunities"},
+                        "url": _build_openopps_url(record),
+                    },
+                ],
+            },
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": "Powered by <https://openopps.com|Open Opportunities> · Data from 800+ sources across 180+ countries",
+                    },
                 ],
             },
             {"type": "divider"},
@@ -218,7 +363,7 @@ def post_to_slack(webhook_url: str, record: dict, matched_rule_name: str,
 
 
 def post_alert(destination: dict, record: dict, matched_rule_name: str,
-               summary: str, reason: str) -> bool:
+               summary: str, reason: str, relevance: int = 0) -> bool:
     """
     Route to correct poster based on destination type.
 
@@ -228,6 +373,7 @@ def post_alert(destination: dict, record: dict, matched_rule_name: str,
         matched_rule_name: Name of the matched routing rule
         summary: LLM-generated summary
         reason: LLM-generated reason for match
+        relevance: Relevance score 0-10
 
     Returns:
         True on success, False on failure.
@@ -236,9 +382,9 @@ def post_alert(destination: dict, record: dict, matched_rule_name: str,
     webhook_url = destination.get("webhook", "")
 
     if dest_type == "teams":
-        return post_to_teams(webhook_url, record, matched_rule_name, summary, reason)
+        return post_to_teams(webhook_url, record, matched_rule_name, summary, reason, relevance)
     elif dest_type == "slack":
-        return post_to_slack(webhook_url, record, matched_rule_name, summary, reason)
+        return post_to_slack(webhook_url, record, matched_rule_name, summary, reason, relevance)
     else:
         print(f"[ERROR] Unknown destination type: {dest_type}")
         return False

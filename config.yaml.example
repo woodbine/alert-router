@@ -1,7 +1,7 @@
 # Open Opportunities Alert Router - config.yaml
 # Copy this file to config.yaml and fill in your values
 #
-# Documentation: https://openopps.com/expert
+# Documentation: https://openopps.com/api
 
 # --- Spend Network API credentials ---
 # Sign up at https://openopps.com/pricing (Expert tier)
@@ -42,68 +42,127 @@ search:
   # Search term to filter by (searches title, description, and content)
   # Supports boolean OR syntax: "term1" OR "term2" OR "term3"
   # Use this to narrow results to a specific domain
-  # Leave blank or remove to fetch all matching records
+  # IMPORTANT: You must filter by search_term, category, or buyer.
+  # Leave blank or remove to fetch all matching records.
   search_term: >
     "cyber security" OR "cybersecurity" OR "penetration testing" OR "pen test"
-    OR "siem" OR "soc" OR "endpoint" OR "anti-virus" OR "antivirus" OR "firewall"
-    OR "information security" OR "data security" OR "network security"
-    OR "security operations" OR "threat intelligence" OR "vulnerability"
+    OR "siem" OR "security operations centre" OR "anti-virus" OR "antivirus"
+    OR "firewall" OR "information security" OR "network security"
+    OR "threat intelligence" OR "vulnerability assessment"
     OR "intrusion detection" OR "managed security" OR "zero trust"
-    OR "identity management" OR "security architecture" OR "red team"
-    OR "incident response" OR "security clearance" OR "security audit"
-    OR "security monitoring" OR "ransomware" OR "malware" OR "DDoS"
-    OR "access control" OR "cyber essentials"
+    OR "security architecture" OR "red team" OR "incident response"
+    OR "security clearance" OR "security audit" OR "security monitoring"
+    OR "ransomware" OR "malware" OR "cyber essentials"
+    OR "endpoint protection" OR "endpoint detection" OR "EDR" OR "XDR" OR "MDR"
+    OR "security consultancy" OR "ISO 27001" OR "security assessment"
+    OR "threat hunting" OR "digital forensics" OR "cloud security"
+    OR "application security" OR "DevSecOps" OR "security testing" OR "VAPT"
+    OR "privileged access management" OR "cyber resilience" OR "NCSC"
+    OR "blue team" OR "purple team" OR "tabletop exercise"
 
   # Exclude records containing this term (useful for removing false positives)
   # exclude_term: "cleaning"
 
   # How many days back to query (1 = today only, 2 = today + yesterday)
-  lookback_days: 2
+  lookback_days: 7
 
   # Records per API page (max 100)
   limit: 100
 
   # Max total records to fetch (optional - caps total across all pages)
   # Useful for testing. Remove or set to 0 for no cap.
-  # max_records: 20
+  max_records: 50
+
+# --- Relevance gate (optional) ---
+# A mandatory first-pass check applied BEFORE any routing rules.
+# If the record fails this gate, it is not routed anywhere and scores 0.
+# This is useful when your search terms are broad and pull in false positives.
+# Remove or leave blank to disable the gate.
+relevance_gate: >
+  This opportunity must be genuinely related to CYBER SECURITY, INFORMATION
+  SECURITY, or IT SECURITY to pass this gate.
+  Examples that PASS: penetration testing, SOC services, SIEM, managed security,
+  threat intelligence, vulnerability assessment, security architecture, red team,
+  endpoint detection, security consultancy, cyber essentials, ISO 27001 audit,
+  cloud security, DevSecOps, security awareness training, incident response.
+  Examples that FAIL: physical security (guards, patrols, CCTV, keyholding,
+  door entry, locks, fencing), fire alarms, intruder alarms, health & safety,
+  facilities management, general IT (unless specifically security-focused),
+  medical devices, transport, construction, catering, cleaning.
+  If "security" appears in the title or description, check carefully whether
+  it refers to cyber/digital security or physical security.
+  A mention of "cyber essentials" as a supplier requirement or certification
+  in an otherwise non-cyber tender does NOT make it a cyber opportunity.
+  The CORE SUBJECT of the procurement must be cyber/information security.
+  If the tender is fundamentally about medical devices, transport, diagnostics,
+  construction, FM, or any other non-cyber topic, it FAILS this gate even if
+  it mentions cyber security certifications as a supplier qualification.
 
 # --- Destinations ---
 # Where matched opportunities get posted
 # Each destination needs a name, type (teams or slack), and webhook URL
+#
+# Teams webhooks:
+#   - Power Automate Workflows: https://...powerplatform.com/.../workflows/...
+#   - Legacy Connectors: https://outlook.office.com/webhook/...
+# Slack webhooks:
+#   - https://hooks.slack.com/services/...
 destinations:
-  - name: cyber-consulting
+  - name: bd-north
     type: teams
-    webhook: https://outlook.office.com/webhook/your-webhook-url
+    webhook: https://your-teams-webhook-url-here
 
-  - name: south-east-bd
+  - name: bd-south
+    type: teams
+    webhook: https://your-teams-webhook-url-here
+
+  - name: consulting
+    type: teams
+    webhook: https://your-teams-webhook-url-here
+
+  - name: health-opps
     type: slack
     webhook: https://hooks.slack.com/services/your-webhook-url
 
-  - name: jane-smith
-    type: teams
-    webhook: https://outlook.office.com/webhook/another-webhook-url
-
 # --- Routing rules ---
 # Plain English descriptions of what each destination should receive.
-# The LLM reads these descriptions and matches records accordingly.
-# Be specific - include synonyms, geographies, and example organisations.
+# These are only evaluated AFTER the relevance gate passes.
+# A single record CAN match multiple rules and will be posted to all
+# matched destinations. Be specific — include examples and exclusions.
+#
+# Each record also gets a relevance score (1-10) which appears on the card:
+#   1-3 = marginal match    4-6 = partial match
+#   7-8 = good match        9-10 = excellent match
 routing_rules:
-  # Example 1: Match by subject matter
+  # Example 1: Route by buyer geography (North)
   - description: >
-      All cyber security consulting, penetration testing, SOC services,
-      security architecture, threat intelligence, and red team exercises
-    destination: cyber-consulting
+      The buying organisation is located in Northern England, the Midlands,
+      Scotland, Wales, or Northern Ireland.
+      Northern England: North East, North West, Yorkshire and the Humber.
+      Midlands: East Midlands, West Midlands.
+      South West England (Bristol, Bath, Exeter) is NOT in this region.
+    destination: bd-north
 
-  # Example 2: Match by buyer geography
+  # Example 2: Route by buyer geography (South)
   - description: >
-      Any buying organisation that is a local authority, council, or combined
-      authority in the South East of England including London, Kent, Surrey,
-      Essex, Sussex, and Hampshire
-    destination: south-east-bd
+      The buying organisation is located in London, South East England,
+      South West England, or East of England.
+      Also includes UK-wide central government departments based in London.
+    destination: bd-south
 
-  # Example 3: Match by buyer type
+  # Example 3: Route by opportunity type
   - description: >
-      Any opportunity from a central government department, ministry, agency,
-      or executive non-departmental public body, including the Home Office,
-      NHS England, HMRC, MoD, and similar
-    destination: jane-smith
+      The opportunity involves professional services, consultancy, advisory
+      work, or outsourced service delivery rather than product supply.
+      Examples: security consulting, penetration testing services, SOC as a
+      service, managed security services, security training delivery.
+      Do NOT match if purely purchasing software licences or hardware.
+    destination: consulting
+
+  # Example 4: Route by buyer organisation type
+  - description: >
+      The BUYER ORGANISATION NAME is a health sector body.
+      Match ONLY if the buyer name contains: NHS, Health, ICB, UKHSA,
+      ambulance trust, or similar health body.
+      DO NOT match based on the subject — only the buyer name matters.
+    destination: health-opps

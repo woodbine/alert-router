@@ -160,12 +160,14 @@ def main(config_path: str, dry_run: bool, limit, lookback):
             record,
             config["routing_rules"],
             config["llm"],
+            config,
         )
         stats["classified"] += 1
 
         matched = classification["matched_destinations"]
         summary = classification["summary"]
         reason = classification["reason"]
+        relevance = classification.get("relevance", 0)
 
         if not matched:
             stats["unmatched"] += 1
@@ -185,15 +187,16 @@ def main(config_path: str, dry_run: bool, limit, lookback):
                 value = record.get("tender_gbp_value", 0)
                 value_str = f"\u00a3{value:,.0f}" if value else "Not published"
                 print(f"  [DRY RUN] Would post to: {dest_name} ({destination['type']})")
-                print(f"    Title:   {record.get('tender_title', 'N/A')}")
-                print(f"    Buyer:   {record.get('buyer_name', 'N/A')}")
-                print(f"    Value:   {value_str}")
-                print(f"    Rule:    {dest_name}")
-                print(f"    Summary: {summary}")
+                print(f"    Title:     {record.get('tender_title', 'N/A')}")
+                print(f"    Buyer:     {record.get('buyer_name', 'N/A')}")
+                print(f"    Value:     {value_str}")
+                print(f"    Rule:      {dest_name}")
+                print(f"    Relevance: {relevance}/10")
+                print(f"    Summary:   {summary}")
                 print()
                 any_success = True
             else:
-                success = post_alert(destination, record, dest_name, summary, reason)
+                success = post_alert(destination, record, dest_name, summary, reason, relevance)
                 if success:
                     print(f"  [OK] Posted to {dest_name}")
                     any_success = True
